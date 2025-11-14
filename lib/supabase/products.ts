@@ -6,7 +6,7 @@ export type Product = {
   title: string;
   description: string;
   image: string | null;
-  price: number; // 1, 2, or 3 USDT
+  price: number; // Price in INR
   status: "active" | "inactive" | "sold_out";
   category: string | null;
   badge: string | null;
@@ -21,7 +21,7 @@ export async function fetchActiveProducts(): Promise<Product[]> {
     .from("products")
     .select("*")
     .eq("status", "active")
-    .not("seller_id", "is", null) // Only show products from sellers
+    .not("seller_id", "is", null)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -29,6 +29,31 @@ export async function fetchActiveProducts(): Promise<Product[]> {
     throw error;
   }
 
-  return data || [];
+  const products = (data || []) as Product[];
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+  // Resolve image URLs
+  const resolved = products.map((p) => {
+    if (p.image) {
+      // If image starts with http, it's already a full URL
+      if (p.image.startsWith("http")) {
+        return p;
+      }
+      // If it's a storage path, convert to public URL
+      if (baseUrl) {
+        const encodedPath = p.image.split("/").map(encodeURIComponent).join("/");
+        p.image = `${baseUrl.replace(/\/$/, "")}/storage/v1/object/public/product-images/${encodedPath}`;
+      }
+    }
+    return p;
+  });
+
+  console.log("✅ Fetched products with images:", resolved.map(p => ({ 
+    id: p.id,
+    title: p.title, 
+    image: p.image ? p.image.substring(0, 80) + "..." : "null"
+  })));
+
+  return resolved;
 }
 

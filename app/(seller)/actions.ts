@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -195,24 +196,44 @@ export async function addProduct(
     return { error: "Your seller account must be approved before adding products" };
   }
 
-  // Upload product image
+  // Upload product image using service role to bypass RLS
   const imageFile = formData.get("image") as File | null;
   let imageUrl: string | null = null;
 
   if (imageFile && imageFile.size > 0) {
-    const imagePath = `products/${seller.id}/${Date.now()}_${imageFile.name}`;
-    const { data: imageData, error: imageError } = await supabase.storage
-      .from("product-images")
-      .upload(imagePath, imageFile, {
-        cacheControl: "3600",
-        upsert: false,
-      });
+    try {
+      // Use service role for storage to bypass RLS policies
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-    if (!imageError && imageData) {
-      const { data: urlData } = supabase.storage
+      if (!serviceKey || !supabaseUrl) {
+        return { error: "Server configuration error" };
+      }
+
+      const supabaseService = createSupabaseClient(supabaseUrl, serviceKey);
+
+      const imagePath = `products/${seller.id}/${Date.now()}_${imageFile.name}`;
+      const { data: imageData, error: imageError } = await supabaseService.storage
         .from("product-images")
-        .getPublicUrl(imageData.path);
-      imageUrl = urlData.publicUrl;
+        .upload(imagePath, imageFile, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (imageError) {
+        console.error("Image upload error:", imageError);
+        return { error: `Image upload failed: ${imageError.message}` };
+      }
+
+      if (imageData) {
+        const { data: urlData } = supabaseService.storage
+          .from("product-images")
+          .getPublicUrl(imageData.path);
+        imageUrl = urlData?.publicUrl || null;
+      }
+    } catch (err) {
+      console.error("Error uploading image:", err);
+      return { error: "Failed to upload image. Please try again." };
     }
   }
 
@@ -224,7 +245,7 @@ export async function addProduct(
       title: formData.get("title") as string,
       description: formData.get("description") as string,
       image: imageUrl,
-      price: parseInt(formData.get("price") as string),
+      price: parseFloat(formData.get("price") as string),
       category: formData.get("category") as string || null,
       badge: formData.get("badge") as string || null,
       status: "active",

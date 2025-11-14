@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SupabaseProvider from "@/components/supabase-provider";
 import SupabaseListener from "@/components/supabase-listener";
+import CartProvider from "@/components/cart-context";
 import { createClient } from "@/lib/supabase/server";
 
 const geistSans = Geist({
@@ -38,7 +39,9 @@ export default async function RootLayout({
       >
         <SupabaseProvider initialSession={session}>
           <SupabaseListener serverAccessToken={session?.access_token} />
-          {children}
+          <CartProvider>
+            {children}
+          </CartProvider>
         </SupabaseProvider>
       </body>
     </html>

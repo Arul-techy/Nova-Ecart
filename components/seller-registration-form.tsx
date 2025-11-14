@@ -383,7 +383,7 @@ export default function SellerRegistrationForm() {
                   Authorization Letter
                 </label>
                 <p className="mt-1 text-xs text-slate-500">
-                  If you're not the brand owner but authorized to sell
+                  If you are not the brand owner but authorized to sell
                 </p>
                 <input
                   type="file"

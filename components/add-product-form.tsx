@@ -92,19 +92,18 @@ export default function AddProductForm() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="price" className="block text-sm font-medium text-slate-700">
-              Price (USDT) *
+              Price (INR) *
             </label>
-            <select
+            <input
+              type="number"
               id="price"
               name="price"
               required
+              min="1"
+              step="0.01"
               className="mt-1 w-full rounded-lg border border-slate-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            >
-              <option value="">Select price</option>
-              <option value="1">1 USDT</option>
-              <option value="2">2 USDT</option>
-              <option value="3">3 USDT</option>
-            </select>
+              placeholder="Enter price in Indian Rupees"
+            />
           </div>
 
           <div>

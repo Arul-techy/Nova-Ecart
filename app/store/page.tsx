@@ -7,6 +7,7 @@ import { useFormStatus } from "react-dom";
 import { signOut } from "@/app/(auth)/actions";
 import { useSupabase } from "@/components/supabase-provider";
 import UserProfile from "@/components/user-profile";
+import { useCart } from "@/components/cart-context";
 import { fetchActiveProducts, type Product } from "@/lib/supabase/products";
 
 function SignOutButton() {
@@ -62,7 +63,14 @@ export default function StorePage() {
   const [searchTerm, setSearchTerm] = useState(inboundQuery);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [notification, setNotification] = useState<string | null>(null);
-  const [cartCount, setCartCount] = useState(0);
+  // cart count is provided by CartContext
+  const cart = useCart();
+  const cartCount = cart?.count ?? 0;
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -137,7 +145,12 @@ export default function StorePage() {
   };
 
   const handleAddToCart = (product: Product) => {
-    setCartCount((count) => count + 1);
+    try {
+      cart?.addToCart(product);
+    } catch (e) {
+      // fallback: no-op
+      console.warn("Cart not available", e);
+    }
     setNotification(`${product.title} added to your cart.`);
   };
 
@@ -206,7 +219,7 @@ export default function StorePage() {
                 Store
               </Link>
               <span className="rounded-full border border-indigo-100 bg-indigo-50 px-4 py-2 text-indigo-600">
-                Cart {cartCount}
+                Cart{isMounted ? ` ${cartCount}` : ""}
               </span>
             </nav>
             <div className="flex w-full items-center justify-between gap-3 text-xs font-medium text-slate-600 sm:w-auto">
@@ -347,12 +360,13 @@ export default function StorePage() {
                   {product.image && (
                     <div className="relative h-48 w-full overflow-hidden rounded-2xl bg-slate-100">
                       <img
-                        src={product.image}
+                        src={product.image ?? undefined}
                         alt={product.title}
                         className="h-full w-full object-cover"
                         onError={(e) => {
-                          // Hide image on error
-                          e.currentTarget.style.display = "none";
+                          // Show a lightweight SVG placeholder on error
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="%23f1f5f9"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23999" font-family="Arial, Helvetica, sans-serif" font-size="20">Image unavailable</text></svg>';
                         }}
                       />
                     </div>
@@ -375,7 +389,7 @@ export default function StorePage() {
                   </div>
                   <div className="text-sm">
                     <span className="text-2xl font-bold text-slate-900">
-                      {product.price} USDT
+                      ₹{product.price.toFixed(2)}
                     </span>
                   </div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-green-600">
