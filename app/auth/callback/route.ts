@@ -8,15 +8,18 @@ export async function GET(request: NextRequest) {
   const error = requestUrl.searchParams.get("error");
   const errorDescription = requestUrl.searchParams.get("error_description");
 
+  console.log("🔵 Callback received:", { code: !!code, redirectTo, error });
+
   // Handle OAuth errors
   if (error) {
-    console.error("OAuth error:", error, errorDescription);
+    console.error("❌ OAuth error:", error, errorDescription);
     return NextResponse.redirect(
       new URL(`/sign-in?message=${encodeURIComponent(errorDescription || error)}`, requestUrl.origin),
     );
   }
 
   if (!code) {
+    console.error("❌ Missing authorization code");
     return NextResponse.redirect(
       new URL("/sign-in?message=missing_code", requestUrl.origin),
     );
@@ -24,13 +27,14 @@ export async function GET(request: NextRequest) {
 
   // Check for required environment variables
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    console.error("Missing Supabase environment variables");
+    console.error("❌ Missing Supabase environment variables");
     return NextResponse.redirect(
       new URL("/sign-in?message=configuration_error", requestUrl.origin),
     );
   }
 
   const response = NextResponse.redirect(new URL(redirectTo, requestUrl.origin));
+  console.log("✅ Redirecting to:", redirectTo);
 
   try {
     const supabase = createServerClient(
@@ -51,15 +55,16 @@ export async function GET(request: NextRequest) {
       },
     );
 
-    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
     
     if (exchangeError) {
-      console.error("Code exchange error:", exchangeError);
+      console.error("❌ Code exchange error:", exchangeError);
       return NextResponse.redirect(
         new URL(`/sign-in?message=${encodeURIComponent(exchangeError.message)}`, requestUrl.origin),
       );
     }
 
+    console.log("✅ Session created for user:", data?.user?.email);
     return response;
   } catch (err) {
     console.error("Callback error:", err);
