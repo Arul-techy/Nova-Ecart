@@ -8,7 +8,6 @@
 
 ## ✅ Configuration Files
 - [x] `.gitignore` configured
-- [x] `vercel.json` created
 - [x] `next.config.ts` configured with image domains
 - [x] `package.json` has all dependencies
 
@@ -21,12 +20,13 @@
 - [ ] Create `seller-documents` storage bucket (private)
 - [ ] Create `product-images` storage bucket (public)
 
-### 2. Environment Variables to Set in Vercel
+### 2. Environment Variables
 
 **Required:**
 ```
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_SITE_URL=your_deployment_url
 ```
 
 **Optional (for Cryptomus):**
@@ -36,14 +36,12 @@ CRYPTOMUS_API_KEY=your_api_key
 CRYPTOMUS_API_URL=https://api.cryptomus.com/v1
 ```
 
-**Note:** `NEXT_PUBLIC_SITE_URL` will be auto-set by Vercel, but update it after first deployment with your actual domain.
-
 ### 3. Supabase Redirect URLs
 After deployment, add these to Supabase Dashboard → Authentication → URL Configuration:
-- Site URL: `https://your-project.vercel.app`
+- Site URL: `https://your-deployment-url.com`
 - Redirect URLs:
-  - `https://your-project.vercel.app/auth/callback`
-  - `https://your-project.vercel.app/**`
+  - `https://your-deployment-url.com/auth/callback`
+  - `https://your-deployment-url.com/**`
 
 ## 🚀 Quick Deploy Steps
 
@@ -54,15 +52,13 @@ After deployment, add these to Supabase Dashboard → Authentication → URL Con
    git push
    ```
 
-2. **Deploy to Vercel:**
-   - Go to https://vercel.com
-   - Click "Add New Project"
-   - Import your GitHub repo
-   - Add environment variables
-   - Click "Deploy"
+2. **Deploy to your hosting provider:**
+   - Connect your GitHub repository
+   - Configure environment variables
+   - Deploy the application
 
 3. **Update Supabase:**
-   - Add Vercel URL to redirect URLs
+   - Add deployment URL to redirect URLs
    - Test authentication flow
 
 4. **Test Everything:**
