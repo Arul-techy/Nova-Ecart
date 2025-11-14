@@ -31,11 +31,12 @@ export default function SignUpForm({ redirectTo }: SignUpFormProps) {
   const [emailError, emailAction] = useActionState(signUpWithEmail, initialState);
   const [success, setSuccess] = useState(false);
 
-  const handleEmailAction = async (formData: FormData) => {
-    const result = await emailAction(formData);
-    if (result === "success") {
-      setSuccess(true);
-    }
+  const handleEmailAction = (formData: FormData) => {
+    emailAction(formData).then((result) => {
+      if (result === "success") {
+        setSuccess(true);
+      }
+    });
   };
 
   if (success) {
