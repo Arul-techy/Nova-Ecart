@@ -41,7 +41,7 @@ export default async function SignInPage({
             Welcome back to NovaEcart
           </h1>
           <p className="text-sm text-slate-600">
-            Continue with Google to resume shopping on NovaEcart.
+            Sign in to continue shopping on NovaEcart.
           </p>
         </div>
         {friendlyMessage ? (
