@@ -86,29 +86,24 @@ async function startGoogleAuth(redirectTo: string) {
     ? `${origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`
     : `${origin}/auth/callback`;
 
-  try {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: authRedirect,
-      },
-    });
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: authRedirect,
+    },
+  });
 
-    if (error) {
-      console.error("Supabase Google OAuth failed:", error.message);
-      return error.message || "Google sign-in is not configured. Please use email/password instead.";
-    }
-
-    if (!data?.url) {
-      console.error("Supabase Google OAuth missing redirect URL.");
-      return "Unable to start Google sign-in. Please try email/password instead.";
-    }
-
-    redirect(data.url);
-  } catch (err) {
-    console.error("Google OAuth error:", err);
-    return "Google sign-in is currently unavailable. Please use email/password instead.";
+  if (error) {
+    console.error("Supabase Google OAuth failed:", error);
+    return `Google sign-in error: ${error.message}`;
   }
+
+  if (!data?.url) {
+    console.error("Supabase Google OAuth missing redirect URL");
+    return "Unable to start Google sign-in. No redirect URL provided.";
+  }
+
+  redirect(data.url);
 }
 
 export async function signInWithGoogle(

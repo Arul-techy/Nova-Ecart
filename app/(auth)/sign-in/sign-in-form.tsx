@@ -49,4 +49,3 @@ export default function SignInForm({ redirectTo }: SignInFormProps) {
     </form>
   );
 }
-
