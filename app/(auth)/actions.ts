@@ -11,6 +11,69 @@ function ensureString(value: FormDataEntryValue | null) {
   return "";
 }
 
+export async function signInWithEmail(
+  _prevState: string | undefined,
+  formData: FormData,
+) {
+  const email = ensureString(formData.get("email"));
+  const password = ensureString(formData.get("password"));
+
+  if (!email || !password) {
+    return "Email and password are required.";
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    console.error("Sign in failed:", error.message);
+    return error.message;
+  }
+
+  redirect("/");
+}
+
+export async function signUpWithEmail(
+  _prevState: string | undefined,
+  formData: FormData,
+) {
+  const email = ensureString(formData.get("email"));
+  const password = ensureString(formData.get("password"));
+
+  if (!email || !password) {
+    return "Email and password are required.";
+  }
+
+  if (password.length < 6) {
+    return "Password must be at least 6 characters.";
+  }
+
+  const supabase = await createClient();
+  const headersList = await headers();
+  const origin =
+    headersList.get("origin") ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    "http://localhost:3000";
+
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${origin}/auth/callback`,
+    },
+  });
+
+  if (error) {
+    console.error("Sign up failed:", error.message);
+    return error.message;
+  }
+
+  return "success";
+}
+
 async function startGoogleAuth(redirectTo: string) {
   const supabase = await createClient();
   const headersList = await headers();
