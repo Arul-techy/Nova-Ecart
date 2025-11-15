@@ -5,6 +5,40 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+// Helper: Parse formatted price input into integer cents
+function parseFormattedPriceToCents(input: FormDataEntryValue | null | undefined): number {
+  if (input == null) return 0;
+  let s = String(input).trim();
+  if (!s) return 0;
+  // remove spaces
+  s = s.replace(/\s+/g, "");
+  const hasDot = s.indexOf('.') !== -1;
+  const hasComma = s.indexOf(',') !== -1;
+  let normalized = s;
+  if (hasDot && !hasComma) {
+    // dots used as thousand separators -> remove all dots
+    normalized = s.replace(/\./g, '');
+  } else if (!hasDot && hasComma) {
+    // comma used as decimal separator -> replace comma with dot
+    normalized = s.replace(/,/g, '.');
+  } else if (hasDot && hasComma) {
+    // determine which is decimal separator by last occurrence
+    const lastDot = s.lastIndexOf('.');
+    const lastComma = s.lastIndexOf(',');
+    if (lastComma > lastDot) {
+      // comma is decimal separator
+      normalized = s.replace(/\./g, '').replace(/,/g, '.');
+    } else {
+      // dot is decimal separator
+      normalized = s.replace(/,/g, '');
+    }
+  }
+  // remove any characters except digits, dot and minus
+  normalized = normalized.replace(/[^0-9.\-]/g, '');
+  const value = parseFloat(normalized) || 0;
+  return Math.round(value * 100);
+}
+
 export async function registerSeller(
   prevState: { error?: string } | undefined,
   formData: FormData
@@ -222,14 +256,14 @@ export async function addProduct(
 
       if (imageError) {
         console.error("Image upload error:", imageError);
-        return { error: `Image upload failed: ${imageError.message}` };
+        return { error: `Image upload failed: ${(imageError as any).message || String(imageError)}` };
       }
 
       if (imageData) {
         const { data: urlData } = supabaseService.storage
           .from("product-images")
           .getPublicUrl(imageData.path);
-        imageUrl = urlData?.publicUrl || null;
+        imageUrl = (urlData as any)?.publicUrl || null;
       }
     } catch (err) {
       console.error("Error uploading image:", err);
@@ -245,7 +279,8 @@ export async function addProduct(
       title: formData.get("title") as string,
       description: formData.get("description") as string,
       image: imageUrl,
-      price: parseFloat(formData.get("price") as string),
+      // parse formatted price strings like "10.000.000" or "12,50"
+      price: parseFormattedPriceToCents(formData.get("price")),
       category: formData.get("category") as string || null,
       badge: formData.get("badge") as string || null,
       status: "active",
@@ -309,6 +344,115 @@ export async function deleteProduct(productId: string) {
 
   revalidatePath("/seller/dashboard");
   return { success: true };
+}
+
+export async function updateProduct(
+  prevState: { error?: string } | undefined,
+  formData: FormData
+) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be logged in to update products" };
+  }
+
+  const productId = formData.get("product_id") as string | null;
+  if (!productId) {
+    return { error: "Missing product id" };
+  }
+
+  // Get seller record
+  const { data: seller, error: sellerError } = await supabase
+    .from("sellers")
+    .select("id, verification_status")
+    .eq("user_id", user.id)
+    .single();
+
+  if (sellerError || !seller) {
+    return { error: "You must be registered as a seller to update products" };
+  }
+
+  // Ensure product belongs to seller
+  const { data: existingProduct, error: existingError } = await supabase
+    .from("products")
+    .select("id, seller_id, image")
+    .eq("id", productId)
+    .single();
+
+  if (existingError || !existingProduct || existingProduct.seller_id !== seller.id) {
+    return { error: "Product not found or you don't have permission to update it" };
+  }
+
+  // Optionally upload new image using service role
+  const imageFile = formData.get("image") as File | null;
+  let imageUrl: string | null = existingProduct.image ?? null;
+
+  if (imageFile && imageFile.size > 0) {
+    try {
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+      if (!serviceKey || !supabaseUrl) {
+        return { error: "Server configuration error" };
+      }
+
+      const supabaseService = createSupabaseClient(supabaseUrl, serviceKey);
+
+      const imagePath = `products/${seller.id}/${Date.now()}_${imageFile.name}`;
+      const { data: imageData, error: imageError } = await supabaseService.storage
+        .from("product-images")
+        .upload(imagePath, imageFile, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (imageError) {
+        console.error("Image upload error:", imageError);
+        return { error: `Image upload failed: ${imageError.message}` };
+      }
+
+      if (imageData) {
+        const { data: urlData } = supabaseService.storage
+          .from("product-images")
+          .getPublicUrl(imageData.path);
+        imageUrl = urlData?.publicUrl || null;
+      }
+    } catch (err) {
+      console.error("Error uploading image:", err);
+      return { error: "Failed to upload image. Please try again." };
+    }
+  }
+
+  // Prepare update payload
+  const updatePayload: any = {
+    title: formData.get("title") as string,
+    description: formData.get("description") as string,
+    // Store price as integer cents to support decimal input (DB may be integer)
+    price: parseFormattedPriceToCents(formData.get("price")),
+    category: (formData.get("category") as string) || null,
+    badge: (formData.get("badge") as string) || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (imageUrl) updatePayload.image = imageUrl;
+
+  const { error: updateError } = await supabase
+    .from("products")
+    .update(updatePayload)
+    .eq("id", productId)
+    .eq("seller_id", seller.id);
+
+  if (updateError) {
+    console.error("Error updating product:", updateError);
+    return { error: updateError.message };
+  }
+
+  revalidatePath("/seller/dashboard");
+  redirect("/seller/dashboard");
 }
 
 export async function approveSeller(sellerId: string, notes: string = "") {

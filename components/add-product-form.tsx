@@ -95,14 +95,12 @@ export default function AddProductForm() {
               Price (INR) *
             </label>
             <input
-              type="number"
+              type="text"
               id="price"
               name="price"
               required
-              min="1"
-              step="0.01"
               className="mt-1 w-full rounded-lg border border-slate-300 px-4 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-              placeholder="Enter price in Indian Rupees"
+              placeholder="Enter price (e.g. 10.000 or 12,50)"
             />
           </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 
 type CartItem = {
   id: string;
@@ -38,7 +38,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [items]);
 
+  const lastAddedRef = useRef<{ product: any; qty: number } | null>(null);
+
   const addToCart = (product: any, qty = 1) => {
+    // record last added item details, then update items state
+    lastAddedRef.current = { product, qty };
     setItems((prev) => {
       const existing = prev.find((it) => it.id === product.id);
       if (existing) {
@@ -53,6 +57,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const clearCart = () => setItems([]);
+
+  // Emit events after items change (commit) to avoid triggering setState during render
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const added = lastAddedRef.current;
+        if (added) {
+          window.dispatchEvent(new CustomEvent("novaecart:item-added", { detail: added }));
+          lastAddedRef.current = null;
+        }
+        window.dispatchEvent(new CustomEvent("novaecart:cart-updated", { detail: { items } }));
+      }
+    } catch {
+      // ignore
+    }
+  }, [items]);
 
   const value: CartContextValue = {
     items,

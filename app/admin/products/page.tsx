@@ -43,6 +43,21 @@ export default function AdminProductsPage() {
     }
   };
 
+  function formatPriceDisplay(value: any) {
+    if (value == null || value === '') return '';
+    const num = Number(value);
+    if (Number.isNaN(num)) return String(value);
+    const sign = num < 0 ? '-' : '';
+    const abs = Math.abs(num);
+    const integer = Math.trunc(abs);
+    const fraction = Math.round((abs - integer) * 100);
+    const intStr = integer.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    if (fraction > 0) {
+      return `${sign}${intStr},${String(fraction).padStart(2, '0')}`;
+    }
+    return `${sign}${intStr}`;
+  }
+
   const handleImageUpload = async (productId: string, file: File) => {
     if (!file) return;
 
@@ -149,7 +164,7 @@ export default function AdminProductsPage() {
                   <p className="mt-1 line-clamp-2 text-sm text-slate-600">{product.description}</p>
                   <div className="mt-2 flex items-center gap-4 text-xs text-slate-500">
                     <span>{product.category || "Uncategorized"}</span>
-                    <span>{product.price} USDT</span>
+                    <span>{product.price != null ? `${formatPriceDisplay(product.price)} INR` : '—'}</span>
                   </div>
                 </div>
 

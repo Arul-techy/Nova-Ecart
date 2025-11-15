@@ -31,6 +31,17 @@ export default async function SellerDashboardPage() {
     .select("*")
     .eq("seller_id", seller.id)
     .order("created_at", { ascending: false });
+  // If price is stored as integer cents, convert to float for UI
+  const normalizedProducts = (products || []).map((p: any) => {
+    try {
+      if (p && typeof p.price === 'number') {
+        return { ...p, price: Number((p.price as number) / 100) };
+      }
+    } catch {
+      // ignore
+    }
+    return p;
+  });
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -60,7 +71,7 @@ export default async function SellerDashboardPage() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8">
-        <SellerDashboard seller={seller} products={products || []} />
+        <SellerDashboard seller={seller} products={normalizedProducts || []} />
       </main>
     </div>
   );

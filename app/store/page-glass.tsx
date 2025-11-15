@@ -71,6 +71,22 @@ export default function StorePageGlass() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+  const [animatingIds, setAnimatingIds] = useState<string[]>([]);
+
+  function formatPriceDisplay(value: any) {
+    if (value == null || value === '') return '';
+    const num = Number(value);
+    if (Number.isNaN(num)) return String(value);
+    const sign = num < 0 ? '-' : '';
+    const abs = Math.abs(num);
+    const integer = Math.trunc(abs);
+    const fraction = Math.round((abs - integer) * 100);
+    const intStr = integer.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    if (fraction > 0) {
+      return `${sign}${intStr},${String(fraction).padStart(2, '0')}`;
+    }
+    return `${sign}${intStr}`;
+  }
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -145,18 +161,20 @@ export default function StorePageGlass() {
   }, [products, selectedCategory, searchTerm]);
 
   const handleAddToCart = (product: Product) => {
-    if (cart) {
-      cart.addToCart(product);
+    try {
+      cart?.addToCart(product);
+    } catch (e) {
+      console.warn('Cart not available', e);
     }
+    // trigger button animation
+    setAnimatingIds((s) => [...s, product.id]);
+    window.setTimeout(() => setAnimatingIds((s) => s.filter((id) => id !== product.id)), 700);
     setNotification(`Added "${product.title}" to your cart.`);
   };
 
   const handleBuyNow = (product: Product) => {
-    if (cart) {
-      cart.addToCart(product);
-    }
-    setNotification(`Proceeding to checkout for "${product.title}".`);
-    router.push("/checkout");
+    // Show coming soon — payment gateway integration planned later
+    setNotification(`Buy now for "${product.title}" is coming soon.`);
   };
 
   if (!session) {
@@ -305,7 +323,7 @@ export default function StorePageGlass() {
                         {/* Price */}
                         <div className="pt-2 border-t border-white/10">
                           <p className="text-xl font-bold text-transparent bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text">
-                            ${product.price}
+                            {formatPriceDisplay(product.price)} INR
                           </p>
                         </div>
                       </div>
@@ -315,7 +333,7 @@ export default function StorePageGlass() {
                         <button
                           type="button"
                           onClick={() => handleAddToCart(product)}
-                          className="rounded-lg bg-white/10 border border-white/20 px-3 py-2 text-sm font-semibold text-blue-300 hover:bg-white/20 hover:border-white/40 transition-all duration-300"
+                          className={`rounded-lg bg-white/10 border border-white/20 px-3 py-2 text-sm font-semibold text-blue-300 hover:bg-white/20 hover:border-white/40 transition-all duration-300 ${animatingIds.includes(product.id) ? 'scale-110 shadow-lg transform' : ''}`}
                         >
                           Add to cart
                         </button>

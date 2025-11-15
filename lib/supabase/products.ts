@@ -45,6 +45,16 @@ export async function fetchActiveProducts(): Promise<Product[]> {
         p.image = `${baseUrl.replace(/\/$/, "")}/storage/v1/object/public/product-images/${encodedPath}`;
       }
     }
+    // If price was stored as integer cents in DB, convert back to float INR for UI
+    try {
+      if (typeof p.price === 'number') {
+        // convert cents -> float
+        p.price = Number((p.price as any) / 100);
+      }
+    } catch {
+      // ignore
+    }
+
     return p;
   });
 

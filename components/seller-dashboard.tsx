@@ -4,6 +4,7 @@ import Link from "next/link";
 import { deleteProduct } from "@/app/(seller)/actions";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import EditProductForm from "./edit-product-form";
 
 type Seller = {
   id: string;
@@ -37,6 +38,7 @@ export default function SellerDashboard({
 }) {
   const router = useRouter();
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Product | null>(null);
 
   const handleDelete = async (productId: string) => {
     if (!confirm("Are you sure you want to delete this product?")) {
@@ -79,6 +81,21 @@ export default function SellerDashboard({
         return "bg-slate-100 text-slate-700";
     }
   };
+
+  function formatPriceDisplay(value: any) {
+    if (value == null || value === '') return '';
+    const num = Number(value);
+    if (Number.isNaN(num)) return String(value);
+    const sign = num < 0 ? '-' : '';
+    const abs = Math.abs(num);
+    const integer = Math.trunc(abs);
+    const fraction = Math.round((abs - integer) * 100);
+    const intStr = integer.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    if (fraction > 0) {
+      return `${sign}${intStr},${String(fraction).padStart(2, '0')}`;
+    }
+    return `${sign}${intStr}`;
+  }
 
   return (
     <div className="space-y-8">
@@ -177,7 +194,7 @@ export default function SellerDashboard({
                 </div>
                 <div className="mt-auto flex items-center justify-between">
                   <div>
-                    <p className="text-lg font-bold text-slate-900">{product.price} USDT</p>
+                    <p className="text-lg font-bold text-slate-900">{product.price != null ? `${formatPriceDisplay(product.price)} INR` : '—'}</p>
                     <span
                       className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(
                         product.status
@@ -187,6 +204,12 @@ export default function SellerDashboard({
                     </span>
                   </div>
                   <div className="flex gap-2">
+                    <button
+                      onClick={() => setEditing(product)}
+                      className="rounded-lg bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-200"
+                    >
+                      Edit
+                    </button>
                     <button
                       onClick={() => handleDelete(product.id)}
                       disabled={deleting === product.id}
@@ -201,6 +224,20 @@ export default function SellerDashboard({
           </div>
         )}
       </div>
+      {editing && (
+        <div className="fixed inset-0 z-60 flex items-start justify-center p-6">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setEditing(null)} />
+          <div className="relative z-70 w-full max-w-2xl">
+            <div className="rounded-2xl bg-white p-6 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Edit Product</h3>
+                <button onClick={() => setEditing(null)} className="text-sm text-gray-600">Close</button>
+              </div>
+              <EditProductForm product={editing} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,10 +1,42 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useCart } from '@/components/cart-context';
+import CartDrawer from '@/components/cart-drawer';
 
 export default function GlassNavbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [pulse, setPulse] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const timeoutRef = useRef<number | null>(null);
+  const cart = useCart();
+
+  useEffect(() => {
+    const handler = () => {
+      setPulse(true);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = window.setTimeout(() => setPulse(false), 700) as unknown as number;
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('novaecart:item-added', handler as EventListener);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('novaecart:item-added', handler as EventListener);
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const menuItems = [
     { label: 'Home', href: '/' },
@@ -41,10 +73,17 @@ export default function GlassNavbar() {
             ))}
           </div>
 
+
           <div className="flex items-center gap-4">
-            <button className="relative p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all duration-300 group">
+            <button
+              onClick={() => setIsCartOpen((s) => !s)}
+              className={`relative p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all duration-300 group ${pulse ? 'animate-pulse' : ''}`}
+              aria-label="Open cart"
+            >
               <span className="text-gray-200 group-hover:text-white">🛒</span>
-              <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">0</span>
+              {mounted && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">{cart?.count ?? 0}</span>
+              )}
             </button>
 
             <button className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all duration-300">
@@ -77,6 +116,8 @@ export default function GlassNavbar() {
           </div>
         )}
       </div>
+      {/* Cart drawer rendered at top level of navbar so it overlays content */}
+      <CartDrawer open={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </nav>
   );
 }
