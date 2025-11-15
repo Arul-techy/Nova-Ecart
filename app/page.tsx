@@ -1,7 +1,7 @@
 "use client";
 
-import HomePage from "@/components/home-page";
+import HomePageGlass from "@/components/home-page-glass";
 
 export default function Page() {
-  return <HomePage />;
+  return <HomePageGlass />;
 }
